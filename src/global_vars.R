@@ -67,22 +67,39 @@ shps <- yaml::read_yaml("resources/annotation/shapes.yaml") %>%
 db <- readr::read_rds("resources/db/genomic_instability/SPECTRUM.rds")
 
 ## define patients included in the study -----------
-protocol_patients <- db$consents %>%
-  dplyr::filter(patient_consent_irb == "17-182") %>%
-  dplyr::pull(patient_id)
 
+# Define confirmed HGS patients
+hgsoc_patients <- db$gyn_diagnosis %>%
+  filter(gyn_diagnosis_histology == "HGS") %>%
+  pull(patient_id)
+
+# Define patients on clinical trials
+protocol_patients <- db$consents %>%
+  filter(patient_consent_irb == "17-182") %>%
+  pull(patient_id)
+
+# Create list of patients on the SPECTRUM TME study
+# - Exclude non-HGSOC patients
+# - Exclude patients on clinical trials (e.g. 17-182)
 included_patients <- db$patients %>%
-  dplyr::filter(patient_inclusion_exclusion=="Included") %>%
-  dplyr::filter(patient_cohort_version___2=="Checked") %>%
-  dplyr::filter(!patient_id %in% protocol_patients) %>%
-  dplyr::pull(patient_id)
+  filter(patient_inclusion_exclusion=="Included") %>%
+  filter(patient_cohort_version___2=="Checked") %>%
+  filter(patient_id %in% hgsoc_patients) %>%
+  filter(!patient_id %in% protocol_patients) %>%
+  pull(patient_id)
+
+# Define patients included in the study with scRNA data
+scrna_patients <- db$sequencing_scrna %>%
+  filter(patient_id %in% included_patients) %>%
+  filter(therapy == "pre-Rx") %>%
+  filter(platform == "10x 3' GE") %>%
+  pull(patient_id) %>%
+  unique
 
 ## load mutational signatures ----------------------
 
 signature_tbl <- db$mutational_signatures %>%
   dplyr::select(patient_id, consensus_signature) %>% 
-  # bind_rows(tibble(patient_id = unique(sort(scrna_meta_tbl$patient_id[!(scrna_meta_tbl$patient_id %in% .$patient_id)])), consensus_signature = "Undetermined")) %>% 
-  mutate(consensus_signature = ifelse(is.na(consensus_signature), "Undetermined", consensus_signature)) %>% 
   mutate(consensus_signature = ordered(consensus_signature, levels = names(clrs$consensus_signature))) %>% 
   arrange(patient_id)
 
@@ -98,8 +115,8 @@ scrna_meta_tbl <- db$sequencing_scrna %>%
          tumor_supersite = str_replace_all(tumor_supersite, "Upper Quadrant", "UQ")) %>% 
   mutate(tumor_megasite = ifelse(!tumor_supersite %in% c("Adnexa", "Ascites"),
                                  "Other", tumor_supersite)) %>% 
-  mutate(tumor_supersite = ordered(tumor_supersite, levels = names(clrs$tumor_supersite))) %>%
-  left_join(db$mutational_signatures, by = "patient_id")
+  mutate(tumor_supersite = ordered(tumor_supersite, levels = names(clrs$tumor_supersite))) %>% 
+  left_join(signature_tbl, by = "patient_id")
 
 ## load IF meta data -------------------------------
 
@@ -134,13 +151,24 @@ if_slide_meta_tbl <- db$if_slide
 
 bulk_dna_meta_tbl <- db$sequencing_bulk_dna %>%
   mutate(patient_id_short = str_remove_all(patient_id, "SPECTRUM-OV-"),
+         sample_id_short = str_remove_all(sample_id, "OV-"),
          tumor_supersite = str_replace_all(tumor_supersite, "Upper Quadrant", "UQ")) %>% 
   mutate(tumor_megasite = ifelse(!tumor_supersite %in% c("Adnexa", "Ascites"),
                                  "Other", tumor_supersite)) %>% 
   mutate(tumor_supersite = ordered(tumor_supersite, levels = names(clrs$tumor_supersite))) %>% 
   filter(patient_id %in% included_patients) %>% 
-  left_join(db$mutational_signatures, by = "patient_id") %>%
-  mutate(consensus_signature = ordered(consensus_signature, levels = names(clrs$consensus_signature)))
+  left_join(signature_tbl, by = "patient_id")
+
+## load MSK-IMPACT meta data ------------------------
+
+impact_meta_tbl <- db$sequencing_msk_impact_custom %>%
+  mutate(patient_id_short = str_remove_all(patient_id, "SPECTRUM-OV-"),
+         tumor_supersite = str_replace_all(tumor_supersite, "Upper Quadrant", "UQ")) %>% 
+  mutate(tumor_megasite = ifelse(!tumor_supersite %in% c("Adnexa", "Ascites"),
+                                 "Other", tumor_supersite)) %>% 
+  mutate(tumor_supersite = ordered(tumor_supersite, levels = names(clrs$tumor_supersite))) %>% 
+  filter(patient_id %in% included_patients) %>% 
+  left_join(signature_tbl, by = "patient_id")
 
 ## cell type sort fraction -------------------------
 
