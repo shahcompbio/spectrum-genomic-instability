@@ -96,6 +96,13 @@ scrna_patients <- db$sequencing_scrna %>%
   pull(patient_id) %>%
   unique
 
+# Define patients included in the study with scDNA data
+scdna_patients <- db$sequencing_scdna %>%
+  filter(patient_id %in% included_patients) %>%
+  filter(qc_status == "Pass") %>%
+  pull(patient_id) %>%
+  unique
+
 ## load mutational signatures ----------------------
 
 signature_tbl <- db$mutational_signatures %>%
