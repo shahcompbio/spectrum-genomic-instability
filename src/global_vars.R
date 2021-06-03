@@ -24,24 +24,24 @@ remove_guides <- guides(color = F, fill = F, shape = F, alpha = F)
 
 ## umap helpers --------------------------------------
 
-arrow <- arrow(angle = 20, type = "closed", length = unit(0.1, "npc"))
-umap_coord_anno <- ggplot(tibble(group = c("UMAP1", "UMAP2"),
-                                 x = c(0, 0), xend = c(1, 0),
-                                 y = c(0, 0), yend = c(0, 1),
-                                 lx = c(0.5, -0.15), ly = c(-0.15, 0.5),
-                                 angle = c(0, 90))) +
-  geom_segment(aes(x, y, xend = xend, yend = yend, group = group),
-               arrow = arrow, size = 1, lineend = "round") +
-  geom_text(aes(lx, ly, label = group, angle = angle), size = 4) +
-  theme_void() +
-  coord_fixed(xlim = c(-0.3, 1), ylim = c(-0.3, 1))
+# arrow <- arrow(angle = 20, type = "closed", length = unit(0.1, "npc"))
+# umap_coord_anno <- ggplot(tibble(group = c("UMAP1", "UMAP2"),
+#                                  x = c(0, 0), xend = c(1, 0),
+#                                  y = c(0, 0), yend = c(0, 1),
+#                                  lx = c(0.5, -0.15), ly = c(-0.15, 0.5),
+#                                  angle = c(0, 90))) +
+#   geom_segment(aes(x, y, xend = xend, yend = yend, group = group),
+#                arrow = arrow, size = 1, lineend = "round") +
+#   geom_text(aes(lx, ly, label = group, angle = angle), size = 4) +
+#   theme_void() +
+#   coord_fixed(xlim = c(-0.3, 1), ylim = c(-0.3, 1))
 
-add_umap_coord <- function(gg_obj) {
-  p <- ggdraw() + 
-    draw_plot(gg_obj, x = 0, y = 0, width = 1, height = 1) +
-    draw_plot(umap_coord_anno, x = -0.015, y = -0.02, width = 0.4, height = 0.4)
-  return(p)
-}
+# add_umap_coord <- function(gg_obj) {
+#   p <- ggdraw() + 
+#     draw_plot(gg_obj, x = 0, y = 0, width = 1, height = 1) +
+#     draw_plot(umap_coord_anno, x = -0.015, y = -0.02, width = 0.4, height = 0.4)
+#   return(p)
+# }
 
 
 ## cohort marker genes ----------------------------
@@ -115,7 +115,7 @@ signature_tbl <- db$mutational_signatures %>%
 scrna_meta_tbl <- db$sequencing_scrna %>% 
   filter(patient_id %in% included_patients,
          therapy == "pre-Rx") %>% 
-  rename(sample = isabl_id) %>% 
+  dplyr::rename(sample = isabl_id) %>% 
   distinct(sample, .keep_all = T) %>% 
   mutate(patient_id_short = str_remove_all(patient_id, "SPECTRUM-OV-"),
          sort_short = str_remove_all(sort_parameters, "singlet, live, "),
